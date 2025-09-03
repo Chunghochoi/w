@@ -543,6 +543,20 @@
             margin: 10px 0;
         }
 
+        .turnstile-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            min-height: 100px;
+            align-items: center;
+        }
+
+        .captcha-loading {
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -727,6 +741,7 @@
         // Dữ liệu lưu trữ
         let links = JSON.parse(localStorage.getItem('linkshield_links') || '[]');
         let currentVerification = null;
+        let captchaToken = null;
         
         // Tạo fingerprint nâng cao
         function getAdvancedFingerprint() {
@@ -954,6 +969,50 @@
             }
         }
 
+        // Callback cho Cloudflare Turnstile
+        window.onCaptchaSuccess = function(token) {
+            console.log('Cloudflare Turnstile verified:', token);
+            captchaToken = token;
+            
+            // Hiển thị thông báo thành công
+            const statusElement = document.getElementById('captcha-status');
+            if (statusElement) {
+                statusElement.innerHTML = '✅ CAPTCHA verified successfully!';
+                statusElement.style.color = 'var(--success)';
+            }
+            
+            // Tự động chuyển sang bước tiếp theo sau 2 giây
+            setTimeout(() => {
+                if (window.currentCaptchaCallback) {
+                    window.currentCaptchaCallback();
+                }
+            }, 2000);
+        };
+
+        // Callback khi CAPTCHA hết hạn
+        window.onCaptchaExpired = function() {
+            console.log('Cloudflare Turnstile expired');
+            captchaToken = null;
+            
+            const statusElement = document.getElementById('captcha-status');
+            if (statusElement) {
+                statusElement.innerHTML = '⚠️ CAPTCHA expired. Please try again.';
+                statusElement.style.color = 'var(--warning)';
+            }
+        };
+
+        // Callback khi CAPTCHA gặp lỗi
+        window.onCaptchaError = function() {
+            console.log('Cloudflare Turnstile error');
+            captchaToken = null;
+            
+            const statusElement = document.getElementById('captcha-status');
+            if (statusElement) {
+                statusElement.innerHTML = '❌ CAPTCHA error. Please refresh and try again.';
+                statusElement.style.color = 'var(--error)';
+            }
+        };
+
         // Xử lý verification nâng cao
         function startVerification() {
             document.getElementById('main-page').style.display = 'none';
@@ -1014,36 +1073,46 @@
                 </div>
             `;
             
-            // Simulate IP detection
-            setTimeout(() => {
-                document.getElementById('ip-status').innerHTML = '✅ IP: 192.168.1.100 (Vietnam)';
-                setTimeout(callback, 1500);
-            }, 2000);
+            // Simulate IP detection with real geolocation
+            fetch('https://ipapi.co/json/')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('ip-status').innerHTML = `✅ IP: ${data.ip} (${data.country_name})`;
+                    setTimeout(callback, 1500);
+                })
+                .catch(() => {
+                    document.getElementById('ip-status').innerHTML = '✅ IP: 192.168.1.100 (Vietnam)';
+                    setTimeout(callback, 1500);
+                });
         }
 
-        // ĐÃ CẬP NHẬT: Thay thế hàm CAPTCHA giả lập bằng Cloudflare Turnstile thật
+        // Cloudflare CAPTCHA verification với Turnstile thực
         function showCloudflareCaptcha(callback) {
-            // 1. Tạo một hàm callback toàn cục để Turnstile có thể gọi khi xác minh thành công
-            window.onCaptchaVerified = function(token) {
-                console.log("Cloudflare Turnstile token:", token);
-                // Sau khi xác minh thành công, gọi hàm callback để chuyển sang bước tiếp theo
-                callback();
-            };
-
-            // 2. Cập nhật HTML để hiển thị widget của Turnstile
+            // Lưu callback để sử dụng sau khi CAPTCHA thành công
+            window.currentCaptchaCallback = callback;
+            
             document.getElementById('verification-content').innerHTML = `
                 <h3>🔒 Cloudflare Verification</h3>
                 <p>Please complete the security check to prove you are human.</p>
-                <div style="display: flex; justify-content: center; margin: 20px 0;">
+                <div class="turnstile-container">
                     <div class="cf-turnstile" 
                          data-sitekey="0x4AAAAAAAByNqVj311czpWiu" 
-                         data-callback="onCaptchaVerified">
+                         data-callback="onCaptchaSuccess"
+                         data-expired-callback="onCaptchaExpired"
+                         data-error-callback="onCaptchaError"
+                         data-theme="dark">
                     </div>
                 </div>
+                <div id="captcha-status" class="captcha-loading">⏳ Loading CAPTCHA...</div>
             `;
+
+            // Khởi tạo lại Turnstile widget
+            setTimeout(() => {
+                if (window.turnstile) {
+                    window.turnstile.render('.cf-turnstile');
+                }
+            }, 500);
         }
-        
-        // ĐÃ XÓA: Các hàm 'selectCaptchaImage' và 'verifyCaptcha' cũ đã được loại bỏ
 
         // GeoBlock verification
         function showGeoBlock(callback) {
@@ -1056,10 +1125,21 @@
                 </div>
             `;
             
-            setTimeout(() => {
-                document.getElementById('geo-status').innerHTML = '✅ Access granted from Vietnam';
-                setTimeout(callback, 1500);
-            }, 2500);
+            // Kiểm tra vị trí thực tế
+            fetch('https://ipapi.co/json/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.country_code === 'VN') {
+                        document.getElementById('geo-status').innerHTML = '✅ Access granted from Vietnam';
+                    } else {
+                        document.getElementById('geo-status').innerHTML = `⚠️ Access from ${data.country_name} - Normally restricted to Vietnam only`;
+                    }
+                    setTimeout(callback, 2000);
+                })
+                .catch(() => {
+                    document.getElementById('geo-status').innerHTML = '✅ Access granted from Vietnam';
+                    setTimeout(callback, 2000);
+                });
         }
 
         // Browser Fingerprint Collection
@@ -1073,12 +1153,12 @@
             `;
             
             const steps = [
-                '🖥️ Screen Resolution: 1920x1080',
-                '🌐 Browser: Chrome/Edge',
-                '🕒 Timezone: GMT+7',
+                `🖥️ Screen Resolution: ${screen.width}x${screen.height}`,
+                `🌐 Browser: ${navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Firefox') ? 'Firefox' : 'Other'}`,
+                `🕒 Timezone: GMT${new Date().getTimezoneOffset() > 0 ? '-' : '+'}${Math.abs(new Date().getTimezoneOffset()/60)}`,
                 '🎨 Canvas Fingerprint: Generated',
-                '📱 Device Type: Desktop',
-                '🔤 Language: Vietnamese'
+                `📱 Platform: ${navigator.platform}`,
+                `🗣️ Language: ${navigator.language}`
             ];
             
             let currentStep = 0;
@@ -1099,13 +1179,39 @@
             const linkIndex = links.findIndex(link => link.id === currentVerification.id);
             if (linkIndex !== -1) {
                 links[linkIndex].clicks++;
-                links[linkIndex].analytics.visitors.push({
-                    timestamp: new Date().toISOString(),
-                    ip: '192.168.1.100',
-                    userAgent: navigator.userAgent,
-                    fingerprint: getAdvancedFingerprint()
-                });
-                saveData();
+                
+                // Thu thập thông tin thực tế từ IP API
+                fetch('https://ipapi.co/json/')
+                    .then(response => response.json())
+                    .then(data => {
+                        links[linkIndex].analytics.visitors.push({
+                            timestamp: new Date().toISOString(),
+                            ip: data.ip || 'Unknown',
+                            country: data.country_name || 'Unknown',
+                            city: data.city || 'Unknown',
+                            userAgent: navigator.userAgent,
+                            fingerprint: getAdvancedFingerprint(),
+                            captchaToken: captchaToken
+                        });
+                        
+                        // Cập nhật thống kê theo quốc gia
+                        const country = data.country_name || 'Unknown';
+                        links[linkIndex].analytics.countries[country] = (links[linkIndex].analytics.countries[country] || 0) + 1;
+                        
+                        saveData();
+                    })
+                    .catch(() => {
+                        // Fallback nếu không lấy được thông tin IP
+                        links[linkIndex].analytics.visitors.push({
+                            timestamp: new Date().toISOString(),
+                            ip: 'Unknown',
+                            country: 'Unknown',
+                            userAgent: navigator.userAgent,
+                            fingerprint: getAdvancedFingerprint(),
+                            captchaToken: captchaToken
+                        });
+                        saveData();
+                    });
             }
             
             document.getElementById('verification-content').innerHTML = `
