@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LinkShield - Advanced URL Shortener</title>
+    
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         
@@ -605,10 +608,8 @@
             <p>Advanced URL Protection & Analytics Platform</p>
         </div>
 
-        <!-- Trang chính -->
         <div id="main-page">
             <div class="main-content">
-                <!-- Tạo link mới -->
                 <div class="card">
                     <h2>🚀 Create Protected Link</h2>
                     <form id="create-form">
@@ -679,7 +680,6 @@
                     <div id="create-result" class="result"></div>
                 </div>
 
-                <!-- Quản lý link -->
                 <div class="card">
                     <h2>📊 Link Management</h2>
                     <div id="my-links">
@@ -692,7 +692,6 @@
             </div>
         </div>
 
-        <!-- Trang xác minh -->
         <div id="verification-page" class="verification-page">
             <div class="verification-step">
                 <div class="step-icon">🛡️</div>
@@ -1022,53 +1021,29 @@
             }, 2000);
         }
 
-        // Cloudflare CAPTCHA
+        // ĐÃ CẬP NHẬT: Thay thế hàm CAPTCHA giả lập bằng Cloudflare Turnstile thật
         function showCloudflareCaptcha(callback) {
-            const puzzles = [
-                { question: "Select all images with traffic lights", answer: "traffic" },
-                { question: "Select all images with crosswalks", answer: "crosswalk" },
-                { question: "Select all images with bicycles", answer: "bicycle" }
-            ];
-            
-            const puzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
-            
+            // 1. Tạo một hàm callback toàn cục để Turnstile có thể gọi khi xác minh thành công
+            window.onCaptchaVerified = function(token) {
+                console.log("Cloudflare Turnstile token:", token);
+                // Sau khi xác minh thành công, gọi hàm callback để chuyển sang bước tiếp theo
+                callback();
+            };
+
+            // 2. Cập nhật HTML để hiển thị widget của Turnstile
             document.getElementById('verification-content').innerHTML = `
-                <h3>🔒 Cloudflare CAPTCHA</h3>
-                <p>${puzzle.question}</p>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px; max-width: 300px; margin-left: auto; margin-right: auto;">
-                    ${Array.from({length: 9}, (_, i) => `
-                        <div class="captcha-image" data-index="${i}" style="
-                            width: 80px; 
-                            height: 80px; 
-                            background: var(--bg-tertiary); 
-                            border: 2px solid var(--border);
-                            border-radius: 8px; 
-                            cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            font-size: 24px;
-                            transition: all 0.3s ease;
-                        " onclick="selectCaptchaImage(this)">
-                            ${['🚦', '🚲', '🚶', '🏠', '🚗', '🛣️', '🌳', '🏢', '⛽'][i]}
-                        </div>
-                    `).join('')}
+                <h3>🔒 Cloudflare Verification</h3>
+                <p>Please complete the security check to prove you are human.</p>
+                <div style="display: flex; justify-content: center; margin: 20px 0;">
+                    <div class="cf-turnstile" 
+                         data-sitekey="0x4AAAAAAAByNqVj311czpWiu" 
+                         data-callback="onCaptchaVerified">
+                    </div>
                 </div>
-                <button onclick="verifyCaptcha('${puzzle.answer}', () => callback())" class="btn" style="max-width: 200px; margin: 10px auto;">Verify</button>
             `;
         }
-
-        function selectCaptchaImage(element) {
-            element.style.borderColor = element.style.borderColor === 'rgb(0, 212, 170)' ? 'var(--border)' : 'var(--accent)';
-            element.style.backgroundColor = element.style.borderColor === 'rgb(0, 212, 170)' ? 'rgba(0, 212, 170, 0.1)' : 'var(--bg-tertiary)';
-        }
-
-        function verifyCaptcha(correctAnswer, callback) {
-            // Simulate verification
-            setTimeout(() => {
-                callback();
-            }, 1000);
-        }
+        
+        // ĐÃ XÓA: Các hàm 'selectCaptchaImage' và 'verifyCaptcha' cũ đã được loại bỏ
 
         // GeoBlock verification
         function showGeoBlock(callback) {
