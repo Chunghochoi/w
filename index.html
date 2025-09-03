@@ -1094,25 +1094,96 @@
             document.getElementById('verification-content').innerHTML = `
                 <h3>🔒 Cloudflare Verification</h3>
                 <p>Please complete the security check to prove you are human.</p>
-                <div class="turnstile-container">
-                    <div class="cf-turnstile" 
-                         data-sitekey="0x4AAAAAAAByNqVj311czpWiu" 
-                         data-callback="onCaptchaSuccess"
-                         data-expired-callback="onCaptchaExpired"
-                         data-error-callback="onCaptchaError"
-                         data-theme="dark">
-                    </div>
+                <div class="turnstile-container" id="captcha-container">
+                    <div id="captcha-widget"></div>
                 </div>
                 <div id="captcha-status" class="captcha-loading">⏳ Loading CAPTCHA...</div>
             `;
 
-            // Khởi tạo lại Turnstile widget
-            setTimeout(() => {
-                if (window.turnstile) {
-                    window.turnstile.render('.cf-turnstile');
+            // Đợi Turnstile script load xong rồi mới render
+            function initializeCaptcha() {
+                try {
+                    if (window.turnstile && window.turnstile.render) {
+                        const widgetId = window.turnstile.render('#captcha-widget', {
+                            sitekey: '0x4AAAAAAAByNqVj311czpWiu',
+                            callback: function(token) {
+                                console.log('CAPTCHA verified:', token);
+                                captchaToken = token;
+                                document.getElementById('captcha-status').innerHTML = '✅ CAPTCHA verified successfully!';
+                                document.getElementById('captcha-status').style.color = 'var(--success)';
+                                setTimeout(() => {
+                                    if (window.currentCaptchaCallback) {
+                                        window.currentCaptchaCallback();
+                                    }
+                                }, 2000);
+                            },
+                            'expired-callback': function() {
+                                console.log('CAPTCHA expired');
+                                captchaToken = null;
+                                document.getElementById('captcha-status').innerHTML = '⚠️ CAPTCHA expired. Please try again.';
+                                document.getElementById('captcha-status').style.color = 'var(--warning)';
+                            },
+                            'error-callback': function() {
+                                console.log('CAPTCHA error - falling back to simulation');
+                                // Fallback to simulated verification if Turnstile fails
+                                document.getElementById('captcha-container').innerHTML = `
+                                    <div style="padding: 20px; border: 2px solid var(--accent); border-radius: 10px; background: var(--bg-tertiary);">
+                                        <div style="display: flex; align-items: center; gap: 15px;">
+                                            <div style="width: 24px; height: 24px; border: 2px solid var(--accent); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="simulateVerification()">
+                                                <span id="checkbox-mark" style="display: none; color: var(--accent);">✓</span>
+                                            </div>
+                                            <span>I'm not a robot</span>
+                                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2300d4aa' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E" style="width: 24px; height: 24px;">
+                                        </div>
+                                    </div>
+                                `;
+                                document.getElementById('captcha-status').innerHTML = '🤖 Click the checkbox to verify';
+                                document.getElementById('captcha-status').style.color = 'var(--text-secondary)';
+                            },
+                            theme: 'dark'
+                        });
+                        
+                        document.getElementById('captcha-status').innerHTML = '🔄 Please complete the verification';
+                        document.getElementById('captcha-status').style.color = 'var(--text-secondary)';
+                        
+                    } else {
+                        throw new Error('Turnstile not available');
+                    }
+                } catch (error) {
+                    console.log('Turnstile initialization failed, using fallback');
+                    // Fallback simulation nếu Turnstile không khả dụng
+                    document.getElementById('captcha-container').innerHTML = `
+                        <div style="padding: 20px; border: 2px solid var(--accent); border-radius: 10px; background: var(--bg-tertiary);">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div style="width: 24px; height: 24px; border: 2px solid var(--accent); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="simulateVerification()">
+                                    <span id="checkbox-mark" style="display: none; color: var(--accent);">✓</span>
+                                </div>
+                                <span>I'm not a robot</span>
+                                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2300d4aa' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E" style="width: 24px; height: 24px;">
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('captcha-status').innerHTML = '🤖 Click the checkbox to verify';
+                    document.getElementById('captcha-status').style.color = 'var(--text-secondary)';
                 }
-            }, 500);
+            }
+
+            // Thử khởi tạo sau vài giây để đảm bảo script đã load
+            setTimeout(initializeCaptcha, 1000);
         }
+
+        // Hàm mô phỏng xác thực khi Turnstile thất bại
+        window.simulateVerification = function() {
+            document.getElementById('checkbox-mark').style.display = 'block';
+            document.getElementById('captcha-status').innerHTML = '✅ Verification complete!';
+            document.getElementById('captcha-status').style.color = 'var(--success)';
+            
+            setTimeout(() => {
+                if (window.currentCaptchaCallback) {
+                    window.currentCaptchaCallback();
+                }
+            }, 1500);
+        };
 
         // GeoBlock verification
         function showGeoBlock(callback) {
