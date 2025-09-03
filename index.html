@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkShield - Advanced URL Shortener</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-card: #151515;
+            --border: #333333;
+            --border-hover: #444444;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --text-muted: #666666;
+            --accent: #00d4aa;
+            --accent-hover: #00b894;
+            --warning: #fdcb6e;
+            --error: #e74c3c;
+            --success: #00b894;
+            --purple: #a29bfe;
+            --blue: #74b9ff;
+            --orange: #fd79a8;
+            --gradient-main: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            --gradient-accent: linear-gradient(135deg, #00d4aa 0%, #00b894 100%);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(ellipse at top, #1a1a2e 0%, #0a0a0a 50%);
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 25% 25%, #667eea 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, #764ba2 0%, transparent 50%),
+                radial-gradient(circle at 75% 25%, #f093fb 0%, transparent 50%);
+            opacity: 0.03;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .header h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: var(--gradient-accent);
+            border-radius: 2px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-top: 20px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-main);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--border-hover);
+        }
+
+        .card h2 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 15px 20px;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 16px;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .features-section {
+            margin-bottom: 30px;
+        }
+
+        .features-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .features-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .feature-option {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 18px 20px;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 170, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .feature-option:hover {
+            border-color: var(--accent);
+            background: rgba(0, 212, 170, 0.05);
+        }
+
+        .feature-option:hover::before {
+            left: 100%;
+        }
+
+        .feature-option.selected {
+            border-color: var(--accent);
+            background: rgba(0, 212, 170, 0.1);
+        }
+
+        .feature-option.free {
+            background: linear-gradient(135deg, rgba(0, 212, 170, 0.1) 0%, rgba(0, 184, 148, 0.05) 100%);
+        }
+
+        .feature-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            position: relative;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .feature-option.selected .feature-checkbox {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .feature-checkbox::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-option.selected .feature-checkbox::after {
+            opacity: 1;
+        }
+
+        .feature-info {
+            flex: 1;
+        }
+
+        .feature-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-badge {
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-free {
+            background: var(--success);
+            color: white;
+        }
+
+        .badge-premium {
+            background: var(--warning);
+            color: var(--bg-primary);
+        }
+
+        .feature-cost {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--gradient-accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 170, 0.3);
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .result.success {
+            background: rgba(0, 184, 148, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .result.error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        .link-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .link-item:hover {
+            border-color: var(--border-hover);
+            transform: translateX(5px);
+        }
+
+        .link-item h4 {
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 15px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .link-item p {
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .link-item strong {
+            color: var(--text-primary);
+        }
+
+        .link-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.3s ease;
+        }
+
+        .btn-small:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--error);
+            border-color: var(--error);
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+            border-color: #c0392b;
+        }
+
+        .verification-page {
+            display: none;
+            text-align: center;
+        }
+
+        .verification-step {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 50px;
+            margin: 30px 0;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .verification-step::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-main);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .step-icon {
+            font-size: 5rem;
+            margin-bottom: 25px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 5px;
+            margin: 25px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-accent);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .code-block {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--accent);
+            word-break: break-all;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+            
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .card {
+                padding: 25px;
+            }
+            
+            .features-grid {
+                gap: 12px;
+            }
+            
+            .feature-option {
+                padding: 15px;
+            }
+        }
+
+        .floating-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            background: var(--accent);
+            border-radius: 50%;
+            opacity: 0.1;
+            animation: float-particle 20s infinite linear;
+        }
+
+        @keyframes float-particle {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.1; }
+            90% { opacity: 0.1; }
+            100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    <div class="floating-particles" id="particles"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>⚡ LinkShield</h1>
+            <p>Advanced URL Protection & Analytics Platform</p>
+        </div>
+
+        <!-- Trang chính -->
+        <div id="main-page">
+            <div class="main-content">
+                <!-- Tạo link mới -->
+                <div class="card">
+                    <h2>🚀 Create Protected Link</h2>
+                    <form id="create-form">
+                        <div class="form-group">
+                            <label for="original-url">Original URL:</label>
+                            <input type="url" id="original-url" placeholder="https://example.com" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Password Protection (Optional):</label>
+                            <input type="password" id="password" placeholder="Enter password">
+                        </div>
+
+                        <div class="features-section">
+                            <div class="features-title">
+                                🛡️ Protection Features
+                            </div>
+                            <div class="features-grid">
+                                <div class="feature-option free" data-type="ip">
+                                    <div class="feature-checkbox"></div>
+                                    <div class="feature-info">
+                                        <div class="feature-name">
+                                            ✅ IP Address Tracking
+                                            <span class="feature-badge badge-free">Free</span>
+                                        </div>
+                                        <div class="feature-cost">Real-time visitor IP logging</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="feature-option premium" data-type="cloudflare">
+                                    <div class="feature-checkbox"></div>
+                                    <div class="feature-info">
+                                        <div class="feature-name">
+                                            🔒 Cloudflare CAPTCHA
+                                            <span class="feature-badge badge-premium">Free</span>
+                                        </div>
+                                        <div class="feature-cost">Advanced bot protection</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="feature-option premium" data-type="geoblock">
+                                    <div class="feature-checkbox"></div>
+                                    <div class="feature-info">
+                                        <div class="feature-name">
+                                            🏴 GeoBlock (VN only — 15 coin)
+                                            <span class="feature-badge badge-premium">Free</span>
+                                        </div>
+                                        <div class="feature-cost">Vietnam-only access restriction</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="feature-option premium" data-type="fingerprint">
+                                    <div class="feature-checkbox"></div>
+                                    <div class="feature-info">
+                                        <div class="feature-name">
+                                            🔍 Browser Fingerprint Collection
+                                            <span class="feature-badge badge-premium">Free</span>
+                                        </div>
+                                        <div class="feature-cost">Advanced device tracking</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn">Generate Protected Link</button>
+                    </form>
+                    
+                    <div id="create-result" class="result"></div>
+                </div>
+
+                <!-- Quản lý link -->
+                <div class="card">
+                    <h2>📊 Link Management</h2>
+                    <div id="my-links">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔗</div>
+                            <p>No links created from this device yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trang xác minh -->
+        <div id="verification-page" class="verification-page">
+            <div class="verification-step">
+                <div class="step-icon">🛡️</div>
+                <h2>Security Verification</h2>
+                <p>Please complete the verification steps to access the protected link</p>
+                
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                </div>
+                
+                <div id="verification-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tạo particles animation
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.width = particle.style.height = Math.random() * 4 + 2 + 'px';
+                particle.style.animationDuration = (Math.random() * 20 + 10) + 's';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Dữ liệu lưu trữ
+        let links = JSON.parse(localStorage.getItem('linkshield_links') || '[]');
+        let currentVerification = null;
+        
+        // Tạo fingerprint nâng cao
+        function getAdvancedFingerprint() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillText('🔒 LinkShield Fingerprint', 2, 2);
+            
+            const fingerprint = {
+                userAgent: navigator.userAgent,
+                screen: `${screen.width}x${screen.height}`,
+                timezone: new Date().getTimezoneOffset(),
+                language: navigator.language,
+                platform: navigator.platform,
+                cookieEnabled: navigator.cookieEnabled,
+                canvas: canvas.toDataURL(),
+                timestamp: Date.now()
+            };
+            
+            return btoa(JSON.stringify(fingerprint)).slice(0, 32);
+        }
+
+        // Tạo ID ngẫu nhiên với prefix
+        function generateId() {
+            return 'ls_' + Math.random().toString(36).substr(2, 12) + Date.now().toString(36);
+        }
+
+        // Tạo short URL
+        function generateShortUrl(id) {
+            return window.location.origin + window.location.pathname + '?verify=' + id;
+        }
+
+        // Lưu dữ liệu
+        function saveData() {
+            localStorage.setItem('linkshield_links', JSON.stringify(links));
+        }
+
+        // Hiển thị kết quả với animation
+        function showResult(elementId, message, isError = false) {
+            const result = document.getElementById(elementId);
+            result.innerHTML = `<strong>${isError ? '❌' : '✅'}</strong> ${message}`;
+            result.className = 'result ' + (isError ? 'error' : 'success');
+            result.style.display = 'block';
+            
+            // Animation
+            result.style.transform = 'translateY(10px)';
+            result.style.opacity = '0';
+            
+            setTimeout(() => {
+                result.style.transform = 'translateY(0)';
+                result.style.opacity = '1';
+                result.style.transition = 'all 0.3s ease';
+            }, 100);
+            
+            setTimeout(() => {
+                result.style.opacity = '0';
+                result.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    result.style.display = 'none';
+                }, 300);
+            }, 8000);
+        }
+
+        // Xử lý form tạo link
+        document.getElementById('create-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const originalUrl = document.getElementById('original-url').value;
+            const password = document.getElementById('password').value;
+            const selectedFeatures = [];
+            
+            // Thu thập các tính năng được chọn
+            document.querySelectorAll('.feature-option.selected').forEach(option => {
+                selectedFeatures.push(option.getAttribute('data-type'));
+            });
+            
+            if (selectedFeatures.length === 0) {
+                showResult('create-result', 'Please select at least one protection feature!', true);
+                return;
+            }
+            
+            // Tạo link mới
+            const linkData = {
+                id: generateId(),
+                originalUrl: originalUrl,
+                password: password,
+                features: selectedFeatures,
+                createdAt: new Date().toISOString(),
+                clicks: 0,
+                deviceFingerprint: getAdvancedFingerprint(),
+                analytics: {
+                    visitors: [],
+                    countries: {},
+                    devices: {}
+                }
+            };
+            
+            links.push(linkData);
+            saveData();
+            
+            const shortUrl = generateShortUrl(linkData.id);
+            showResult('create-result', `Protected link created successfully!`);
+            
+            // Hiển thị link trong code block
+            setTimeout(() => {
+                const result = document.getElementById('create-result');
+                result.innerHTML += `<div class="code-block">${shortUrl}</div>`;
+            }, 1000);
+            
+            // Reset form
+            this.reset();
+            document.querySelectorAll('.feature-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Cập nhật danh sách link
+            updateMyLinks();
+        });
+
+        // Xử lý click vào feature option
+        document.querySelectorAll('.feature-option').forEach(option => {
+            option.addEventListener('click', function() {
+                this.classList.toggle('selected');
+                
+                // Animation effect
+                if (this.classList.contains('selected')) {
+                    this.style.transform = 'scale(1.02)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 150);
+                }
+            });
+        });
+
+        // Cập nhật danh sách link với animation
+        function updateMyLinks() {
+            const myLinksContainer = document.getElementById('my-links');
+            const deviceFingerprint = getAdvancedFingerprint();
+            const myLinks = links.filter(link => link.deviceFingerprint === deviceFingerprint);
+            
+            if (myLinks.length === 0) {
+                myLinksContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔗</div>
+                        <p>No links created from this device yet</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            myLinksContainer.innerHTML = myLinks.map(link => `
+                <div class="link-item">
+                    <h4>🔗 ${link.originalUrl.length > 50 ? link.originalUrl.substring(0, 50) + '...' : link.originalUrl}</h4>
+                    <div class="code-block">${generateShortUrl(link.id)}</div>
+                    <p><strong>Clicks:</strong> ${link.clicks}</p>
+                    <p><strong>Features:</strong> ${link.features.map(f => {
+                        const icons = {ip: '✅', cloudflare: '🔒', geoblock: '🏴', fingerprint: '🔍'};
+                        return icons[f] + ' ' + f;
+                    }).join(', ')}</p>
+                    <p><strong>Created:</strong> ${new Date(link.createdAt).toLocaleString('vi-VN')}</p>
+                    ${link.password ? '<p><strong>🔒 Password Protected</strong></p>' : ''}
+                    <div class="link-actions">
+                        <button class="btn-small" onclick="copyToClipboard('${generateShortUrl(link.id)}')">📋 Copy Link</button>
+                        <button class="btn-small" onclick="showAnalytics('${link.id}')">📊 Analytics</button>
+                        <button class="btn-small btn-danger" onclick="deleteLink('${link.id}')">🗑️ Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Copy link với feedback
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Tạo notification tạm thời
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: var(--success);
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 10px;
+                    font-family: 'JetBrains Mono', monospace;
+                    z-index: 10000;
+                    transform: translateX(400px);
+                    transition: transform 0.3s ease;
+                `;
+                notification.textContent = '✅ Link copied to clipboard!';
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(0)';
+                }, 100);
+                
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(400px)';
+                    setTimeout(() => document.body.removeChild(notification), 300);
+                }, 3000);
+            });
+        }
+
+        // Hiển thị analytics
+        function showAnalytics(linkId) {
+            const link = links.find(l => l.id === linkId);
+            if (!link) return;
+            
+            alert(`📊 Analytics for ${link.originalUrl}\n\n` +
+                  `Total Clicks: ${link.clicks}\n` +
+                  `Unique Visitors: ${link.analytics.visitors.length}\n` +
+                  `Created: ${new Date(link.createdAt).toLocaleString()}\n` +
+                  `Features: ${link.features.join(', ')}`);
+        }
+
+        // Xóa link với confirmation
+        function deleteLink(id) {
+            if (confirm('⚠️ Are you sure you want to delete this link?\nThis action cannot be undone.')) {
+                links = links.filter(link => link.id !== id);
+                saveData();
+                updateMyLinks();
+                
+                // Show success message
+                showResult('create-result', 'Link deleted successfully!');
+            }
+        }
+
+        // Xử lý verification nâng cao
+        function startVerification() {
+            document.getElementById('main-page').style.display = 'none';
+            document.getElementById('verification-page').style.display = 'block';
+            
+            let currentStep = 0;
+            const totalSteps = currentVerification.features.length;
+            
+            function runNextStep() {
+                if (currentStep >= totalSteps) {
+                    completeVerification();
+                    return;
+                }
+                
+                const feature = currentVerification.features[currentStep];
+                const progress = ((currentStep + 1) / totalSteps) * 100;
+                document.getElementById('progress-fill').style.width = progress + '%';
+                
+                switch (feature) {
+                    case 'ip':
+                        showIPTracking(() => {
+                            currentStep++;
+                            runNextStep();
+                        });
+                        break;
+                    case 'cloudflare':
+                        showCloudflareCaptcha(() => {
+                            currentStep++;
+                            runNextStep();
+                        });
+                        break;
+                    case 'geoblock':
+                        showGeoBlock(() => {
+                            currentStep++;
+                            runNextStep();
+                        });
+                        break;
+                    case 'fingerprint':
+                        showFingerprintCollection(() => {
+                            currentStep++;
+                            runNextStep();
+                        });
+                        break;
+                }
+            }
+            
+            runNextStep();
+        }
+
+        // IP Tracking verification
+        function showIPTracking(callback) {
+            document.getElementById('verification-content').innerHTML = `
+                <h3>📡 IP Address Tracking</h3>
+                <p>Collecting visitor information for security purposes...</p>
+                <div style="margin: 20px; padding: 20px; background: var(--bg-tertiary); border-radius: 10px; font-family: 'JetBrains Mono', monospace;">
+                    <div>🌐 Detecting IP Address...</div>
+                    <div id="ip-status">⏳ Please wait...</div>
+                </div>
+            `;
+            
+            // Simulate IP detection
+            setTimeout(() => {
+                document.getElementById('ip-status').innerHTML = '✅ IP: 192.168.1.100 (Vietnam)';
+                setTimeout(callback, 1500);
+            }, 2000);
+        }
+
+        // Cloudflare CAPTCHA
+        function showCloudflareCaptcha(callback) {
+            const puzzles = [
+                { question: "Select all images with traffic lights", answer: "traffic" },
+                { question: "Select all images with crosswalks", answer: "crosswalk" },
+                { question: "Select all images with bicycles", answer: "bicycle" }
+            ];
+            
+            const puzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
+            
+            document.getElementById('verification-content').innerHTML = `
+                <h3>🔒 Cloudflare CAPTCHA</h3>
+                <p>${puzzle.question}</p>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px; max-width: 300px; margin-left: auto; margin-right: auto;">
+                    ${Array.from({length: 9}, (_, i) => `
+                        <div class="captcha-image" data-index="${i}" style="
+                            width: 80px; 
+                            height: 80px; 
+                            background: var(--bg-tertiary); 
+                            border: 2px solid var(--border);
+                            border-radius: 8px; 
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 24px;
+                            transition: all 0.3s ease;
+                        " onclick="selectCaptchaImage(this)">
+                            ${['🚦', '🚲', '🚶', '🏠', '🚗', '🛣️', '🌳', '🏢', '⛽'][i]}
+                        </div>
+                    `).join('')}
+                </div>
+                <button onclick="verifyCaptcha('${puzzle.answer}', () => callback())" class="btn" style="max-width: 200px; margin: 10px auto;">Verify</button>
+            `;
+        }
+
+        function selectCaptchaImage(element) {
+            element.style.borderColor = element.style.borderColor === 'rgb(0, 212, 170)' ? 'var(--border)' : 'var(--accent)';
+            element.style.backgroundColor = element.style.borderColor === 'rgb(0, 212, 170)' ? 'rgba(0, 212, 170, 0.1)' : 'var(--bg-tertiary)';
+        }
+
+        function verifyCaptcha(correctAnswer, callback) {
+            // Simulate verification
+            setTimeout(() => {
+                callback();
+            }, 1000);
+        }
+
+        // GeoBlock verification
+        function showGeoBlock(callback) {
+            document.getElementById('verification-content').innerHTML = `
+                <h3>🏴 Geographic Restriction Check</h3>
+                <p>Verifying access from Vietnam...</p>
+                <div style="margin: 20px; text-align: center;">
+                    <div style="font-size: 4rem; margin: 20px;">🇻🇳</div>
+                    <div id="geo-status">🔍 Checking location...</div>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                document.getElementById('geo-status').innerHTML = '✅ Access granted from Vietnam';
+                setTimeout(callback, 1500);
+            }, 2500);
+        }
+
+        // Browser Fingerprint Collection
+        function showFingerprintCollection(callback) {
+            document.getElementById('verification-content').innerHTML = `
+                <h3>🔍 Browser Fingerprint Collection</h3>
+                <p>Analyzing device characteristics for security...</p>
+                <div style="margin: 20px; padding: 20px; background: var(--bg-tertiary); border-radius: 10px; font-family: 'JetBrains Mono', monospace; text-align: left;">
+                    <div id="fingerprint-data"></div>
+                </div>
+            `;
+            
+            const steps = [
+                '🖥️ Screen Resolution: 1920x1080',
+                '🌐 Browser: Chrome/Edge',
+                '🕒 Timezone: GMT+7',
+                '🎨 Canvas Fingerprint: Generated',
+                '📱 Device Type: Desktop',
+                '🔤 Language: Vietnamese'
+            ];
+            
+            let currentStep = 0;
+            const interval = setInterval(() => {
+                if (currentStep < steps.length) {
+                    document.getElementById('fingerprint-data').innerHTML += steps[currentStep] + '<br>';
+                    currentStep++;
+                } else {
+                    clearInterval(interval);
+                    setTimeout(callback, 1000);
+                }
+            }, 500);
+        }
+
+        // Hoàn thành verification
+        function completeVerification() {
+            // Update analytics
+            const linkIndex = links.findIndex(link => link.id === currentVerification.id);
+            if (linkIndex !== -1) {
+                links[linkIndex].clicks++;
+                links[linkIndex].analytics.visitors.push({
+                    timestamp: new Date().toISOString(),
+                    ip: '192.168.1.100',
+                    userAgent: navigator.userAgent,
+                    fingerprint: getAdvancedFingerprint()
+                });
+                saveData();
+            }
+            
+            document.getElementById('verification-content').innerHTML = `
+                <div style="color: var(--success); font-size: 3rem; margin: 30px;">✅</div>
+                <h3>🎉 Verification Complete!</h3>
+                <p>All security checks passed. Redirecting to destination...</p>
+                <div class="progress-bar" style="margin-top: 20px;">
+                    <div class="progress-fill" style="width: 100%; animation: shimmer 1s infinite;"></div>
+                </div>
+            `;
+            
+            let countdown = 3;
+            const countdownElement = document.createElement('p');
+            countdownElement.style.marginTop = '20px';
+            countdownElement.style.fontSize = '1.2rem';
+            countdownElement.style.fontFamily = "'JetBrains Mono', monospace";
+            document.getElementById('verification-content').appendChild(countdownElement);
+            
+            const countdownInterval = setInterval(() => {
+                countdownElement.textContent = `Redirecting in ${countdown}s...`;
+                countdown--;
+                
+                if (countdown < 0) {
+                    clearInterval(countdownInterval);
+                    window.location.href = currentVerification.originalUrl;
+                }
+            }, 1000);
+        }
+
+        // Kiểm tra URL parameters khi tải trang
+        window.addEventListener('load', function() {
+            createParticles();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const linkId = urlParams.get('verify');
+            
+            if (linkId) {
+                const link = links.find(l => l.id === linkId);
+                if (link) {
+                    // Kiểm tra mật khẩu nếu có
+                    if (link.password) {
+                        const password = prompt('🔒 This link is password protected.\nEnter password to continue:');
+                        if (password !== link.password) {
+                            alert('❌ Incorrect password!');
+                            window.location.href = window.location.origin + window.location.pathname;
+                            return;
+                        }
+                    }
+                    
+                    currentVerification = link;
+                    startVerification();
+                } else {
+                    alert('❌ Link not found or has been deleted!');
+                    window.location.href = window.location.origin + window.location.pathname;
+                }
+            } else {
+                // Hiển thị trang chính
+                updateMyLinks();
+            }
+        });
+
+        // Thêm hiệu ứng hover cho các elements
+        document.addEventListener('mouseover', function(e) {
+            if (e.target.classList.contains('btn') || e.target.classList.contains('btn-small')) {
+                e.target.style.transform = 'translateY(-2px)';
+            }
+        });
+
+        document.addEventListener('mouseout', function(e) {
+            if (e.target.classList.contains('btn') || e.target.classList.contains('btn-small')) {
+                e.target.style.transform = 'translateY(0)';
+            }
+        });
+    </script>
+</body>
+</html>
