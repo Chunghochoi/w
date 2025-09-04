@@ -364,6 +364,11 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 212, 170, 0.3);
         }
+        
+        #password-page .btn {
+            max-width: 300px;
+            margin: 20px auto 0;
+        }
 
         .result {
             margin-top: 25px;
@@ -454,12 +459,12 @@
             border-color: #c0392b;
         }
 
-        .verification-page {
+        .verification-page, .password-page {
             display: none;
             text-align: center;
         }
 
-        .verification-step {
+        .verification-step, .password-card {
             background: var(--bg-card);
             border-radius: 20px;
             padding: 50px;
@@ -469,7 +474,7 @@
             position: relative;
         }
 
-        .verification-step::before {
+        .verification-step::before, .password-card::before {
             content: '';
             position: absolute;
             top: 0;
@@ -567,7 +572,7 @@
                 font-size: 2.5rem;
             }
             
-            .card {
+            .card, .password-card, .verification-step {
                 padding: 25px;
             }
             
@@ -627,6 +632,10 @@
                 <div class="card">
                     <h2>🚀 Create Protected Link</h2>
                     <form id="create-form">
+                        <div class="form-group">
+                            <label for="link-title">Link Title (Optional):</label>
+                            <input type="text" id="link-title" placeholder="e.g., My Secret Document">
+                        </div>
                         <div class="form-group">
                             <label for="original-url">Original URL:</label>
                             <input type="url" id="original-url" placeholder="https://example.com" required>
@@ -719,12 +728,28 @@
                 <div id="verification-content"></div>
             </div>
         </div>
+
+        <div id="password-page" class="password-page">
+            <div class="password-card">
+                <div class="step-icon">🔒</div>
+                <h2>Password Required</h2>
+                <p>This link is protected. Please enter the password to continue.</p>
+                <form id="password-form" style="margin-top: 30px;">
+                    <div class="form-group">
+                        <input type="password" id="access-password" placeholder="Enter password" required>
+                    </div>
+                    <button type="submit" class="btn">Unlock Link</button>
+                </form>
+                <div id="password-result" class="result" style="margin-top: 20px;"></div>
+            </div>
+        </div>
     </div>
 
     <script>
         // Tạo particles animation
         function createParticles() {
             const particlesContainer = document.getElementById('particles');
+            if (particlesContainer.children.length > 0) return; // Prevent creating multiple times
             const particleCount = 50;
             
             for (let i = 0; i < particleCount; i++) {
@@ -812,6 +837,7 @@
             
             const originalUrl = document.getElementById('original-url').value;
             const password = document.getElementById('password').value;
+            const title = document.getElementById('link-title').value;
             const selectedFeatures = [];
             
             // Thu thập các tính năng được chọn
@@ -827,6 +853,7 @@
             // Tạo link mới
             const linkData = {
                 id: generateId(),
+                title: title || originalUrl,
                 originalUrl: originalUrl,
                 password: password,
                 features: selectedFeatures,
@@ -893,9 +920,15 @@
                 return;
             }
             
-            myLinksContainer.innerHTML = myLinks.map(link => `
+            myLinksContainer.innerHTML = myLinks.map(link => {
+                const displayTitle = (link.title && link.title.trim() !== link.originalUrl) 
+                    ? link.title 
+                    : (link.originalUrl.length > 50 ? link.originalUrl.substring(0, 50) + '...' : link.originalUrl);
+
+                return `
                 <div class="link-item">
-                    <h4>🔗 ${link.originalUrl.length > 50 ? link.originalUrl.substring(0, 50) + '...' : link.originalUrl}</h4>
+                    <h4>🔗 ${displayTitle}</h4>
+                    ${(link.title && link.title.trim() !== link.originalUrl) ? `<p><strong>Destination:</strong> ${link.originalUrl.length > 50 ? link.originalUrl.substring(0, 50) + '...' : link.originalUrl}</p>` : ''}
                     <div class="code-block">${generateShortUrl(link.id)}</div>
                     <p><strong>Clicks:</strong> ${link.clicks}</p>
                     <p><strong>Features:</strong> ${link.features.map(f => {
@@ -910,13 +943,12 @@
                         <button class="btn-small btn-danger" onclick="deleteLink('${link.id}')">🗑️ Delete</button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         // Copy link với feedback
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                // Tạo notification tạm thời
                 const notification = document.createElement('div');
                 notification.style.cssText = `
                     position: fixed;
@@ -950,7 +982,7 @@
             const link = links.find(l => l.id === linkId);
             if (!link) return;
             
-            alert(`📊 Analytics for ${link.originalUrl}\n\n` +
+            alert(`📊 Analytics for ${link.title}\n\n` +
                   `Total Clicks: ${link.clicks}\n` +
                   `Unique Visitors: ${link.analytics.visitors.length}\n` +
                   `Created: ${new Date(link.createdAt).toLocaleString()}\n` +
@@ -964,7 +996,6 @@
                 saveData();
                 updateMyLinks();
                 
-                // Show success message
                 showResult('create-result', 'Link deleted successfully!');
             }
         }
@@ -974,14 +1005,12 @@
             console.log('Cloudflare Turnstile verified:', token);
             captchaToken = token;
             
-            // Hiển thị thông báo thành công
             const statusElement = document.getElementById('captcha-status');
             if (statusElement) {
                 statusElement.innerHTML = '✅ CAPTCHA verified successfully!';
                 statusElement.style.color = 'var(--success)';
             }
             
-            // Tự động chuyển sang bước tiếp theo sau 2 giây
             setTimeout(() => {
                 if (window.currentCaptchaCallback) {
                     window.currentCaptchaCallback();
@@ -989,7 +1018,6 @@
             }, 2000);
         };
 
-        // Callback khi CAPTCHA hết hạn
         window.onCaptchaExpired = function() {
             console.log('Cloudflare Turnstile expired');
             captchaToken = null;
@@ -1001,7 +1029,6 @@
             }
         };
 
-        // Callback khi CAPTCHA gặp lỗi
         window.onCaptchaError = function() {
             console.log('Cloudflare Turnstile error');
             captchaToken = null;
@@ -1016,6 +1043,7 @@
         // Xử lý verification nâng cao
         function startVerification() {
             document.getElementById('main-page').style.display = 'none';
+            document.getElementById('password-page').style.display = 'none';
             document.getElementById('verification-page').style.display = 'block';
             
             let currentStep = 0;
@@ -1033,29 +1061,20 @@
                 
                 switch (feature) {
                     case 'ip':
-                        showIPTracking(() => {
-                            currentStep++;
-                            runNextStep();
-                        });
+                        showIPTracking(() => { currentStep++; runNextStep(); });
                         break;
                     case 'cloudflare':
-                        showCloudflareCaptcha(() => {
-                            currentStep++;
-                            runNextStep();
-                        });
+                        showCloudflareCaptcha(() => { currentStep++; runNextStep(); });
                         break;
                     case 'geoblock':
-                        showGeoBlock(() => {
-                            currentStep++;
-                            runNextStep();
-                        });
+                        showGeoBlock(() => { currentStep++; runNextStep(); });
                         break;
                     case 'fingerprint':
-                        showFingerprintCollection(() => {
-                            currentStep++;
-                            runNextStep();
-                        });
+                        showFingerprintCollection(() => { currentStep++; runNextStep(); });
                         break;
+                    default: // Skip unknown features
+                        currentStep++;
+                        runNextStep();
                 }
             }
             
@@ -1073,7 +1092,6 @@
                 </div>
             `;
             
-            // Simulate IP detection with real geolocation
             fetch('https://ipapi.co/json/')
                 .then(response => response.json())
                 .then(data => {
@@ -1086,104 +1104,31 @@
                 });
         }
 
-        // Cloudflare CAPTCHA verification với Turnstile thực
+        // Cloudflare CAPTCHA verification
         function showCloudflareCaptcha(callback) {
-            // Lưu callback để sử dụng sau khi CAPTCHA thành công
             window.currentCaptchaCallback = callback;
             
             document.getElementById('verification-content').innerHTML = `
                 <h3>🔒 Cloudflare Verification</h3>
                 <p>Please complete the security check to prove you are human.</p>
-                <div class="turnstile-container" id="captcha-container">
-                    <div id="captcha-widget"></div>
+                <div class="turnstile-container">
+                    <div class="cf-turnstile" 
+                         data-sitekey="0x4AAAAAAAByNqVj311czpWiu" 
+                         data-callback="onCaptchaSuccess"
+                         data-expired-callback="onCaptchaExpired"
+                         data-error-callback="onCaptchaError"
+                         data-theme="dark">
+                    </div>
                 </div>
                 <div id="captcha-status" class="captcha-loading">⏳ Loading CAPTCHA...</div>
             `;
 
-            // Đợi Turnstile script load xong rồi mới render
-            function initializeCaptcha() {
-                try {
-                    if (window.turnstile && window.turnstile.render) {
-                        const widgetId = window.turnstile.render('#captcha-widget', {
-                            sitekey: '0x4AAAAAAAByNqVj311czpWiu',
-                            callback: function(token) {
-                                console.log('CAPTCHA verified:', token);
-                                captchaToken = token;
-                                document.getElementById('captcha-status').innerHTML = '✅ CAPTCHA verified successfully!';
-                                document.getElementById('captcha-status').style.color = 'var(--success)';
-                                setTimeout(() => {
-                                    if (window.currentCaptchaCallback) {
-                                        window.currentCaptchaCallback();
-                                    }
-                                }, 2000);
-                            },
-                            'expired-callback': function() {
-                                console.log('CAPTCHA expired');
-                                captchaToken = null;
-                                document.getElementById('captcha-status').innerHTML = '⚠️ CAPTCHA expired. Please try again.';
-                                document.getElementById('captcha-status').style.color = 'var(--warning)';
-                            },
-                            'error-callback': function() {
-                                console.log('CAPTCHA error - falling back to simulation');
-                                // Fallback to simulated verification if Turnstile fails
-                                document.getElementById('captcha-container').innerHTML = `
-                                    <div style="padding: 20px; border: 2px solid var(--accent); border-radius: 10px; background: var(--bg-tertiary);">
-                                        <div style="display: flex; align-items: center; gap: 15px;">
-                                            <div style="width: 24px; height: 24px; border: 2px solid var(--accent); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="simulateVerification()">
-                                                <span id="checkbox-mark" style="display: none; color: var(--accent);">✓</span>
-                                            </div>
-                                            <span>I'm not a robot</span>
-                                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2300d4aa' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E" style="width: 24px; height: 24px;">
-                                        </div>
-                                    </div>
-                                `;
-                                document.getElementById('captcha-status').innerHTML = '🤖 Click the checkbox to verify';
-                                document.getElementById('captcha-status').style.color = 'var(--text-secondary)';
-                            },
-                            theme: 'dark'
-                        });
-                        
-                        document.getElementById('captcha-status').innerHTML = '🔄 Please complete the verification';
-                        document.getElementById('captcha-status').style.color = 'var(--text-secondary)';
-                        
-                    } else {
-                        throw new Error('Turnstile not available');
-                    }
-                } catch (error) {
-                    console.log('Turnstile initialization failed, using fallback');
-                    // Fallback simulation nếu Turnstile không khả dụng
-                    document.getElementById('captcha-container').innerHTML = `
-                        <div style="padding: 20px; border: 2px solid var(--accent); border-radius: 10px; background: var(--bg-tertiary);">
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <div style="width: 24px; height: 24px; border: 2px solid var(--accent); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="simulateVerification()">
-                                    <span id="checkbox-mark" style="display: none; color: var(--accent);">✓</span>
-                                </div>
-                                <span>I'm not a robot</span>
-                                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2300d4aa' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E" style="width: 24px; height: 24px;">
-                            </div>
-                        </div>
-                    `;
-                    document.getElementById('captcha-status').innerHTML = '🤖 Click the checkbox to verify';
-                    document.getElementById('captcha-status').style.color = 'var(--text-secondary)';
-                }
-            }
-
-            // Thử khởi tạo sau vài giây để đảm bảo script đã load
-            setTimeout(initializeCaptcha, 1000);
-        }
-
-        // Hàm mô phỏng xác thực khi Turnstile thất bại
-        window.simulateVerification = function() {
-            document.getElementById('checkbox-mark').style.display = 'block';
-            document.getElementById('captcha-status').innerHTML = '✅ Verification complete!';
-            document.getElementById('captcha-status').style.color = 'var(--success)';
-            
             setTimeout(() => {
-                if (window.currentCaptchaCallback) {
-                    window.currentCaptchaCallback();
+                if (window.turnstile) {
+                    window.turnstile.render('.cf-turnstile');
                 }
-            }, 1500);
-        };
+            }, 500);
+        }
 
         // GeoBlock verification
         function showGeoBlock(callback) {
@@ -1196,7 +1141,6 @@
                 </div>
             `;
             
-            // Kiểm tra vị trí thực tế
             fetch('https://ipapi.co/json/')
                 .then(response => response.json())
                 .then(data => {
@@ -1246,16 +1190,14 @@
 
         // Hoàn thành verification
         function completeVerification() {
-            // Update analytics
             const linkIndex = links.findIndex(link => link.id === currentVerification.id);
             if (linkIndex !== -1) {
                 links[linkIndex].clicks++;
                 
-                // Thu thập thông tin thực tế từ IP API
                 fetch('https://ipapi.co/json/')
                     .then(response => response.json())
                     .then(data => {
-                        links[linkIndex].analytics.visitors.push({
+                        const visitorData = {
                             timestamp: new Date().toISOString(),
                             ip: data.ip || 'Unknown',
                             country: data.country_name || 'Unknown',
@@ -1263,23 +1205,19 @@
                             userAgent: navigator.userAgent,
                             fingerprint: getAdvancedFingerprint(),
                             captchaToken: captchaToken
-                        });
+                        };
+                        links[linkIndex].analytics.visitors.push(visitorData);
                         
-                        // Cập nhật thống kê theo quốc gia
                         const country = data.country_name || 'Unknown';
                         links[linkIndex].analytics.countries[country] = (links[linkIndex].analytics.countries[country] || 0) + 1;
                         
                         saveData();
                     })
                     .catch(() => {
-                        // Fallback nếu không lấy được thông tin IP
-                        links[linkIndex].analytics.visitors.push({
+                         links[linkIndex].analytics.visitors.push({
                             timestamp: new Date().toISOString(),
-                            ip: 'Unknown',
-                            country: 'Unknown',
-                            userAgent: navigator.userAgent,
-                            fingerprint: getAdvancedFingerprint(),
-                            captchaToken: captchaToken
+                            ip: 'Unknown', country: 'Unknown', userAgent: navigator.userAgent,
+                            fingerprint: getAdvancedFingerprint(), captchaToken: captchaToken
                         });
                         saveData();
                     });
@@ -1296,9 +1234,7 @@
             
             let countdown = 3;
             const countdownElement = document.createElement('p');
-            countdownElement.style.marginTop = '20px';
-            countdownElement.style.fontSize = '1.2rem';
-            countdownElement.style.fontFamily = "'JetBrains Mono', monospace";
+            countdownElement.style.cssText = "margin-top: 20px; font-size: 1.2rem; font-family: 'JetBrains Mono', monospace;";
             document.getElementById('verification-content').appendChild(countdownElement);
             
             const countdownInterval = setInterval(() => {
@@ -1322,18 +1258,15 @@
             if (linkId) {
                 const link = links.find(l => l.id === linkId);
                 if (link) {
-                    // Kiểm tra mật khẩu nếu có
-                    if (link.password) {
-                        const password = prompt('🔒 This link is password protected.\nEnter password to continue:');
-                        if (password !== link.password) {
-                            alert('❌ Incorrect password!');
-                            window.location.href = window.location.origin + window.location.pathname;
-                            return;
-                        }
-                    }
-                    
                     currentVerification = link;
-                    startVerification();
+                    // *** SỬA LỖI & CẢI TIẾN: Kiểm tra mật khẩu ***
+                    if (link.password && link.password.length > 0) {
+                        document.getElementById('main-page').style.display = 'none';
+                        document.getElementById('password-page').style.display = 'block';
+                    } else {
+                        // Không có mật khẩu, bắt đầu xác minh
+                        startVerification();
+                    }
                 } else {
                     alert('❌ Link not found or has been deleted!');
                     window.location.href = window.location.origin + window.location.pathname;
@@ -1341,6 +1274,24 @@
             } else {
                 // Hiển thị trang chính
                 updateMyLinks();
+            }
+        });
+        
+        // Xử lý form nhập mật khẩu
+        document.getElementById('password-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const passwordInput = document.getElementById('access-password');
+            
+            if (passwordInput.value === currentVerification.password) {
+                // Mật khẩu đúng, bắt đầu xác minh
+                startVerification();
+            } else {
+                // Mật khẩu sai
+                showResult('password-result', 'Incorrect password!', true);
+                passwordInput.style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    passwordInput.style.animation = '';
+                }, 500);
             }
         });
 
