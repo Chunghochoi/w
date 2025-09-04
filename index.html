@@ -928,10 +928,15 @@
             const shortUrl = generateShortUrl(linkData.id);
             showResult('create-result', `Protected link created successfully!`);
             
-            // Hiển thị link trong code block
+            // Hiển thị link trong code block và thêm nút sao chép
             setTimeout(() => {
                 const result = document.getElementById('create-result');
-                result.innerHTML += `<div class="code-block">${shortUrl}</div>`;
+                result.innerHTML += `
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
+                        <div class="code-block" style="flex-grow: 1; margin: 0;">${shortUrl}</div>
+                        <button class="btn-small" onclick="copyToClipboard('${shortUrl}')">📋 Copy</button>
+                    </div>
+                `;
             }, 1000);
             
             // Reset form
