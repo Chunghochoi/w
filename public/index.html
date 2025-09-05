@@ -1064,7 +1064,7 @@
 
         function showCloudflareCaptcha(callback) {
             window.currentCaptchaCallback = callback;
-            document.getElementById('verification-content').innerHTML = `<h3>🔒 Cloudflare Verification</h3><p>Please complete the security check...</p><div class="turnstile-container"><div class="cf-turnstile" data-sitekey="0x4AAAAAAAByNqVj311czpWiu" data-callback="onCaptchaSuccess" data-theme="dark"></div></div><div id="captcha-status" class="captcha-loading">⏳ Loading CAPTCHA...</div>`;
+            document.getElementById('verification-content').innerHTML = `<h3>🔒 Cloudflare Verification</h3><p>Please complete the security check...</p><div class="turnstile-container"><div class="cf-turnstile" data-sitekey="0x4AAAAAABzYIVQrvjCY7KKV" data-callback="onCaptchaSuccess" data-theme="dark"></div></div><div id="captcha-status" class="captcha-loading">⏳ Loading CAPTCHA...</div>`;
             setTimeout(() => { if (window.turnstile) window.turnstile.render('.cf-turnstile'); }, 500);
         }
 
@@ -1114,3 +1114,4 @@
     </script>
 </body>
 </html>
+
