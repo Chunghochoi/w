@@ -562,7 +562,6 @@
             font-size: 0.9rem;
         }
         
-        /* === CSS MỚI CHO BẢNG CHI TIẾT === */
         .visitor-details {
             margin-top: 20px;
             padding: 20px;
@@ -615,7 +614,6 @@
         .visitor-log-table tr:last-child td {
             border-bottom: none;
         }
-        /* === KẾT THÚC CSS MỚI === */
 
         @media (max-width: 768px) {
             .main-content {
@@ -804,7 +802,7 @@
         // Tạo particles animation
         function createParticles() {
             const particlesContainer = document.getElementById('particles');
-            if (particlesContainer.children.length > 0) return; // Prevent creating multiple times
+            if (particlesContainer.children.length > 0) return;
             const particleCount = 50;
             
             for (let i = 0; i < particleCount; i++) {
@@ -818,12 +816,11 @@
             }
         }
 
-        // Dữ liệu lưu trữ
-        let links = JSON.parse(localStorage.getItem('linkshield_links') || '[]');
+        // Dữ liệu
+        let localLinks = JSON.parse(localStorage.getItem('linkshield_links') || '[]');
         let currentVerification = null;
         let captchaToken = null;
         
-        // Tạo fingerprint nâng cao
         function getAdvancedFingerprint() {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -844,30 +841,29 @@
             
             return btoa(JSON.stringify(fingerprint)).slice(0, 32);
         }
-
-        // Tạo ID ngẫu nhiên với prefix
-        function generateId() {
-            return 'ls_' + Math.random().toString(36).substr(2, 12) + Date.now().toString(36);
+        
+        // --- SỬA ĐỔI QUAN TRỌNG ---
+        // Tạo short URL bằng cách mã hóa dữ liệu vào hash
+        function generateShortUrl(linkData) {
+            const dataToEncode = {
+                originalUrl: linkData.originalUrl,
+                password: linkData.password,
+                features: linkData.features
+            };
+            const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(dataToEncode))));
+            return window.location.origin + window.location.pathname + '#' + encodedData;
         }
 
-        // Tạo short URL
-        function generateShortUrl(id) {
-            return window.location.origin + window.location.pathname + '?verify=' + id;
+        function saveLocalData() {
+            localStorage.setItem('linkshield_links', JSON.stringify(localLinks));
         }
 
-        // Lưu dữ liệu
-        function saveData() {
-            localStorage.setItem('linkshield_links', JSON.stringify(links));
-        }
-
-        // Hiển thị kết quả với animation
         function showResult(elementId, message, isError = false) {
             const result = document.getElementById(elementId);
             result.innerHTML = `<strong>${isError ? '❌' : '✅'}</strong> ${message}`;
             result.className = 'result ' + (isError ? 'error' : 'success');
             result.style.display = 'block';
             
-            // Animation
             result.style.transform = 'translateY(10px)';
             result.style.opacity = '0';
             
@@ -886,28 +882,23 @@
             }, 8000);
         }
 
-        // Xử lý form tạo link
         document.getElementById('create-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const originalUrl = document.getElementById('original-url').value;
             const password = document.getElementById('password').value;
             const title = document.getElementById('link-title').value;
-            const selectedFeatures = [];
-            
-            // Thu thập các tính năng được chọn
-            document.querySelectorAll('.feature-option.selected').forEach(option => {
-                selectedFeatures.push(option.getAttribute('data-type'));
-            });
+            const selectedFeatures = Array.from(document.querySelectorAll('.feature-option.selected'))
+                                         .map(opt => opt.getAttribute('data-type'));
             
             if (selectedFeatures.length === 0) {
                 showResult('create-result', 'Please select at least one protection feature!', true);
                 return;
             }
             
-            // Tạo link mới
-            const linkData = {
-                id: generateId(),
+            // Dữ liệu cho việc tạo link và lưu trữ local
+            const linkDataForStorage = {
+                id: 'ls_' + Math.random().toString(36).substr(2, 9), // ID chỉ dùng cho quản lý local
                 title: title || originalUrl,
                 originalUrl: originalUrl,
                 password: password,
@@ -915,20 +906,22 @@
                 createdAt: new Date().toISOString(),
                 clicks: 0,
                 deviceFingerprint: getAdvancedFingerprint(),
-                analytics: {
-                    visitors: [],
-                    countries: {},
-                    devices: {}
-                }
+                analytics: { visitors: [] }
+            };
+
+            // Dữ liệu để mã hóa vào URL
+             const linkDataForUrl = {
+                originalUrl: originalUrl,
+                password: password,
+                features: selectedFeatures,
             };
             
-            links.push(linkData);
-            saveData();
+            localLinks.push(linkDataForStorage);
+            saveLocalData();
             
-            const shortUrl = generateShortUrl(linkData.id);
+            const shortUrl = generateShortUrl(linkDataForUrl);
             showResult('create-result', `Protected link created successfully!`);
             
-            // Hiển thị link trong code block và thêm nút sao chép
             setTimeout(() => {
                 const result = document.getElementById('create-result');
                 result.innerHTML += `
@@ -937,46 +930,30 @@
                         <button class="btn-small" onclick="copyToClipboard('${shortUrl}')">📋 Copy</button>
                     </div>
                 `;
-            }, 1000);
+            }, 500);
             
-            // Reset form
             this.reset();
-            document.querySelectorAll('.feature-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            
-            // Cập nhật danh sách link
+            document.querySelectorAll('.feature-option.selected').forEach(option => option.classList.remove('selected'));
             updateMyLinks();
         });
 
-        // Xử lý click vào feature option
         document.querySelectorAll('.feature-option').forEach(option => {
             option.addEventListener('click', function() {
                 this.classList.toggle('selected');
-                
-                // Animation effect
                 if (this.classList.contains('selected')) {
                     this.style.transform = 'scale(1.02)';
-                    setTimeout(() => {
-                        this.style.transform = 'scale(1)';
-                    }, 150);
+                    setTimeout(() => { this.style.transform = 'scale(1)'; }, 150);
                 }
             });
         });
 
-        // *** CẢI TIẾN: Cập nhật danh sách link với bảng chi tiết ***
         function updateMyLinks() {
             const myLinksContainer = document.getElementById('my-links');
             const deviceFingerprint = getAdvancedFingerprint();
-            const myLinks = links.filter(link => link.deviceFingerprint === deviceFingerprint);
+            const myLinks = localLinks.filter(link => link.deviceFingerprint === deviceFingerprint);
             
             if (myLinks.length === 0) {
-                myLinksContainer.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🔗</div>
-                        <p>No links created from this device yet</p>
-                    </div>
-                `;
+                myLinksContainer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔗</div><p>No links created from this device yet</p></div>`;
                 return;
             }
             
@@ -985,31 +962,18 @@
                     ? link.title 
                     : (link.originalUrl.length > 50 ? link.originalUrl.substring(0, 50) + '...' : link.originalUrl);
 
-                let visitorLogHtml = `
-                    <div class="visitor-details" id="details-${link.id}" style="display: none;">
-                        <h5>📜 Visitor Log</h5>`;
-
+                 // Link này chỉ để hiển thị, link thật sự được tạo lại khi copy
+                const displayUrl = generateShortUrl({
+                    originalUrl: link.originalUrl,
+                    password: link.password,
+                    features: link.features
+                });
+                
+                let visitorLogHtml = `<div class="visitor-details" id="details-${link.id}" style="display: none;"><h5>📜 Visitor Log</h5>`;
                 if (link.analytics.visitors.length > 0) {
-                    visitorLogHtml += `
-                        <table class="visitor-log-table">
-                            <thead>
-                                <tr>
-                                    <th>IP Address</th>
-                                    <th>Country</th>
-                                    <th>Time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${link.analytics.visitors.map(visitor => `
-                                    <tr>
-                                        <td>${visitor.ip}</td>
-                                        <td>${visitor.country}</td>
-                                        <td>${new Date(visitor.timestamp).toLocaleString('vi-VN')}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    `;
+                    visitorLogHtml += `<table class="visitor-log-table"><thead><tr><th>IP Address</th><th>Country</th><th>Time</th></tr></thead><tbody>
+                                ${link.analytics.visitors.map(v => `<tr><td>${v.ip}</td><td>${v.country}</td><td>${new Date(v.timestamp).toLocaleString('vi-VN')}</td></tr>`).join('')}
+                            </tbody></table>`;
                 } else {
                     visitorLogHtml += `<p style="font-size: 0.9rem; color: var(--text-muted);">No visitor data yet.</p>`;
                 }
@@ -1019,25 +983,21 @@
                 <div class="link-item">
                     <h4>🔗 ${displayTitle}</h4>
                     ${(link.title && link.title.trim() !== link.originalUrl) ? `<p><strong>Destination:</strong> ${link.originalUrl.length > 50 ? link.originalUrl.substring(0, 50) + '...' : link.originalUrl}</p>` : ''}
-                    <div class="code-block">${generateShortUrl(link.id)}</div>
+                    <div class="code-block">${displayUrl}</div>
                     <p><strong>Clicks:</strong> ${link.clicks}</p>
-                    <p><strong>Features:</strong> ${link.features.map(f => {
-                        const icons = {ip: '✅', cloudflare: '🔒', geoblock: '🏴', fingerprint: '🔍'};
-                        return icons[f] + ' ' + f;
-                    }).join(', ')}</p>
+                    <p><strong>Features:</strong> ${link.features.map(f => ({ip: '✅ IP', cloudflare: '🔒 Captcha', geoblock: '🏴 GeoBlock', fingerprint: '🔍 Fingerprint'}[f] || f)).join(', ')}</p>
                     <p><strong>Created:</strong> ${new Date(link.createdAt).toLocaleString('vi-VN')}</p>
                     ${link.password ? '<p><strong>🔒 Password Protected</strong></p>' : ''}
                     <div class="link-actions">
-                        <button class="btn-small" onclick="copyToClipboard('${generateShortUrl(link.id)}')">📋 Copy Link</button>
+                        <button class="btn-small" onclick="copyToClipboard('${displayUrl}')">📋 Copy Link</button>
                         <button class="btn-small" onclick="toggleVisitorDetails('${link.id}', this)">📊 View Log</button>
                         <button class="btn-small btn-danger" onclick="deleteLink('${link.id}')">🗑️ Delete</button>
                     </div>
                     ${visitorLogHtml}
-                </div>
-            `}).join('');
+                </div>`;
+            }).join('');
         }
         
-        // *** HÀM MỚI: Bật/tắt bảng chi tiết ***
         function toggleVisitorDetails(linkId, button) {
             const detailsElement = document.getElementById('details-' + linkId);
             if (detailsElement) {
@@ -1047,31 +1007,14 @@
             }
         }
 
-
-        // Copy link với feedback
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 const notification = document.createElement('div');
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    background: var(--success);
-                    color: white;
-                    padding: 15px 25px;
-                    border-radius: 10px;
-                    font-family: 'JetBrains Mono', monospace;
-                    z-index: 10000;
-                    transform: translateX(400px);
-                    transition: transform 0.3s ease;
-                `;
+                notification.style.cssText = `position: fixed; top: 20px; right: 20px; background: var(--success); color: white; padding: 15px 25px; border-radius: 10px; font-family: 'JetBrains Mono', monospace; z-index: 10000; transform: translateX(400px); transition: transform 0.3s ease;`;
                 notification.textContent = '✅ Link copied to clipboard!';
                 document.body.appendChild(notification);
                 
-                setTimeout(() => {
-                    notification.style.transform = 'translateX(0)';
-                }, 100);
-                
+                setTimeout(() => { notification.style.transform = 'translateX(0)'; }, 100);
                 setTimeout(() => {
                     notification.style.transform = 'translateX(400px)';
                     setTimeout(() => document.body.removeChild(notification), 300);
@@ -1079,50 +1022,26 @@
             });
         }
         
-        // Xóa link với confirmation
         function deleteLink(id) {
             if (confirm('⚠️ Are you sure you want to delete this link?\nThis action cannot be undone.')) {
-                links = links.filter(link => link.id !== id);
-                saveData();
+                localLinks = localLinks.filter(link => link.id !== id);
+                saveLocalData();
                 updateMyLinks();
-                
                 showResult('create-result', 'Link deleted successfully!');
             }
         }
 
-        // Callback cho Cloudflare Turnstile
         window.onCaptchaSuccess = function(token) {
-            console.log('Cloudflare Turnstile verified:', token);
             captchaToken = token;
-            
             const statusElement = document.getElementById('captcha-status');
             if (statusElement) {
                 statusElement.innerHTML = '✅ CAPTCHA verified successfully!';
                 statusElement.style.color = 'var(--success)';
             }
-            
-            setTimeout(() => {
-                if (window.currentCaptchaCallback) {
-                    window.currentCaptchaCallback();
-                }
-            }, 2000);
+            if (window.currentCaptchaCallback) setTimeout(window.currentCaptchaCallback, 1500);
         };
-
-        window.onCaptchaExpired = function() {
-            console.log('Cloudflare Turnstile expired');
-            captchaToken = null;
-            
-            const statusElement = document.getElementById('captcha-status');
-            if (statusElement) {
-                statusElement.innerHTML = '⚠️ CAPTCHA expired. Please try again.';
-                statusElement.style.color = 'var(--warning)';
-            }
-        };
-
         window.onCaptchaError = function() {
-            console.log('Cloudflare Turnstile error');
             captchaToken = null;
-            
             const statusElement = document.getElementById('captcha-status');
             if (statusElement) {
                 statusElement.innerHTML = '❌ CAPTCHA error. Please refresh and try again.';
@@ -1130,14 +1049,14 @@
             }
         };
 
-        // Xử lý verification nâng cao
         function startVerification() {
             document.getElementById('main-page').style.display = 'none';
             document.getElementById('password-page').style.display = 'none';
             document.getElementById('verification-page').style.display = 'block';
             
             let currentStep = 0;
-            const totalSteps = currentVerification.features.length;
+            const steps = currentVerification.features;
+            const totalSteps = steps.length;
             
             function runNextStep() {
                 if (currentStep >= totalSteps) {
@@ -1145,118 +1064,60 @@
                     return;
                 }
                 
-                const feature = currentVerification.features[currentStep];
+                const feature = steps[currentStep];
                 const progress = ((currentStep + 1) / totalSteps) * 100;
                 document.getElementById('progress-fill').style.width = progress + '%';
                 
+                const next = () => { currentStep++; runNextStep(); };
+                
                 switch (feature) {
-                    case 'ip':
-                        showIPTracking(() => { currentStep++; runNextStep(); });
-                        break;
-                    case 'cloudflare':
-                        showCloudflareCaptcha(() => { currentStep++; runNextStep(); });
-                        break;
-                    case 'geoblock':
-                        showGeoBlock(() => { currentStep++; runNextStep(); });
-                        break;
-                    case 'fingerprint':
-                        showFingerprintCollection(() => { currentStep++; runNextStep(); });
-                        break;
-                    default: // Skip unknown features
-                        currentStep++;
-                        runNextStep();
+                    case 'ip': showIPTracking(next); break;
+                    case 'cloudflare': showCloudflareCaptcha(next); break;
+                    case 'geoblock': showGeoBlock(next); break;
+                    case 'fingerprint': showFingerprintCollection(next); break;
+                    default: next();
                 }
             }
-            
             runNextStep();
         }
 
-        // IP Tracking verification
         function showIPTracking(callback) {
-            document.getElementById('verification-content').innerHTML = `
-                <h3>📡 IP Address Tracking</h3>
-                <p>Collecting visitor information for security purposes...</p>
-                <div style="margin: 20px; padding: 20px; background: var(--bg-tertiary); border-radius: 10px; font-family: 'JetBrains Mono', monospace;">
-                    <div>🌐 Detecting IP Address...</div>
-                    <div id="ip-status">⏳ Please wait...</div>
-                </div>
-            `;
-            
-            fetch('https://ipapi.co/json/')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('ip-status').innerHTML = `✅ IP: ${data.ip} (${data.country_name})`;
-                    setTimeout(callback, 1500);
-                })
-                .catch(() => {
-                    document.getElementById('ip-status').innerHTML = '✅ IP: 192.168.1.100 (Vietnam)';
-                    setTimeout(callback, 1500);
-                });
+            document.getElementById('verification-content').innerHTML = `<h3>📡 IP Address Tracking</h3><p>Collecting visitor information for security purposes...</p><div style="margin: 20px; padding: 20px; background: var(--bg-tertiary); border-radius: 10px; font-family: 'JetBrains Mono', monospace;"><div>🌐 Detecting IP Address...</div><div id="ip-status">⏳ Please wait...</div></div>`;
+            fetch('https://ipapi.co/json/').then(r => r.json()).then(data => {
+                document.getElementById('ip-status').innerHTML = `✅ IP: ${data.ip} (${data.country_name})`;
+                setTimeout(callback, 1500);
+            }).catch(() => {
+                document.getElementById('ip-status').innerHTML = '✅ IP: 192.168.1.100 (Vietnam)';
+                setTimeout(callback, 1500);
+            });
         }
 
-        // Cloudflare CAPTCHA verification
         function showCloudflareCaptcha(callback) {
             window.currentCaptchaCallback = callback;
-            
-            document.getElementById('verification-content').innerHTML = `
-                <h3>🔒 Cloudflare Verification</h3>
-                <p>Please complete the security check to prove you are human.</p>
-                <div class="turnstile-container">
-                    <div class="cf-turnstile" 
-                         data-sitekey="0x4AAAAAAAByNqVj311czpWiu" 
-                         data-callback="onCaptchaSuccess"
-                         data-expired-callback="onCaptchaExpired"
-                         data-error-callback="onCaptchaError"
-                         data-theme="dark">
-                    </div>
-                </div>
-                <div id="captcha-status" class="captcha-loading">⏳ Loading CAPTCHA...</div>
-            `;
-
-            setTimeout(() => {
-                if (window.turnstile) {
-                    window.turnstile.render('.cf-turnstile');
-                }
-            }, 500);
+            document.getElementById('verification-content').innerHTML = `<h3>🔒 Cloudflare Verification</h3><p>Please complete the security check to prove you are human.</p><div class="turnstile-container"><div class="cf-turnstile" data-sitekey="0x4AAAAAAAByNqVj311czpWiu" data-callback="onCaptchaSuccess" data-error-callback="onCaptchaError" data-theme="dark"></div></div><div id="captcha-status" class="captcha-loading">⏳ Loading CAPTCHA...</div>`;
+            if (window.turnstile) {
+                setTimeout(() => window.turnstile.render('.cf-turnstile'), 100);
+            }
         }
 
-        // GeoBlock verification
         function showGeoBlock(callback) {
-            document.getElementById('verification-content').innerHTML = `
-                <h3>🏴 Geographic Restriction Check</h3>
-                <p>Verifying access from Vietnam...</p>
-                <div style="margin: 20px; text-align: center;">
-                    <div style="font-size: 4rem; margin: 20px;">🇻🇳</div>
-                    <div id="geo-status">🔍 Checking location...</div>
-                </div>
-            `;
-            
-            fetch('https://ipapi.co/json/')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.country_code === 'VN') {
-                        document.getElementById('geo-status').innerHTML = '✅ Access granted from Vietnam';
-                    } else {
-                        document.getElementById('geo-status').innerHTML = `⚠️ Access from ${data.country_name} - Normally restricted to Vietnam only`;
-                    }
-                    setTimeout(callback, 2000);
-                })
-                .catch(() => {
-                    document.getElementById('geo-status').innerHTML = '✅ Access granted from Vietnam';
-                    setTimeout(callback, 2000);
-                });
+            document.getElementById('verification-content').innerHTML = `<h3>🏴 Geographic Restriction Check</h3><p>Verifying access from Vietnam...</p><div style="margin: 20px; text-align: center;"><div style="font-size: 4rem; margin: 20px;">🇻🇳</div><div id="geo-status">🔍 Checking location...</div></div>`;
+            fetch('https://ipapi.co/json/').then(r => r.json()).then(data => {
+                const status = document.getElementById('geo-status');
+                if (data.country_code === 'VN') {
+                    status.innerHTML = '✅ Access granted from Vietnam';
+                } else {
+                    status.innerHTML = `⚠️ Access from ${data.country_name} - Normally restricted to Vietnam only`;
+                }
+                setTimeout(callback, 2000);
+            }).catch(() => {
+                document.getElementById('geo-status').innerHTML = '✅ Access granted from Vietnam';
+                setTimeout(callback, 2000);
+            });
         }
 
-        // Browser Fingerprint Collection
         function showFingerprintCollection(callback) {
-            document.getElementById('verification-content').innerHTML = `
-                <h3>🔍 Browser Fingerprint Collection</h3>
-                <p>Analyzing device characteristics for security...</p>
-                <div style="margin: 20px; padding: 20px; background: var(--bg-tertiary); border-radius: 10px; font-family: 'JetBrains Mono', monospace; text-align: left;">
-                    <div id="fingerprint-data"></div>
-                </div>
-            `;
-            
+            document.getElementById('verification-content').innerHTML = `<h3>🔍 Browser Fingerprint Collection</h3><p>Analyzing device characteristics for security...</p><div style="margin: 20px; padding: 20px; background: var(--bg-tertiary); border-radius: 10px; font-family: 'JetBrains Mono', monospace; text-align: left;"><div id="fingerprint-data"></div></div>`;
             const steps = [
                 `🖥️ Screen Resolution: ${screen.width}x${screen.height}`,
                 `🌐 Browser: ${navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Firefox') ? 'Firefox' : 'Other'}`,
@@ -1265,98 +1126,58 @@
                 `📱 Platform: ${navigator.platform}`,
                 `🗣️ Language: ${navigator.language}`
             ];
-            
-            let currentStep = 0;
+            let i = 0;
             const interval = setInterval(() => {
-                if (currentStep < steps.length) {
-                    document.getElementById('fingerprint-data').innerHTML += steps[currentStep] + '<br>';
-                    currentStep++;
+                if (i < steps.length) {
+                    document.getElementById('fingerprint-data').innerHTML += steps[i++] + '<br>';
                 } else {
                     clearInterval(interval);
                     setTimeout(callback, 1000);
                 }
-            }, 500);
+            }, 300);
         }
 
-        // Hoàn thành verification
         function completeVerification() {
-            const linkIndex = links.findIndex(link => link.id === currentVerification.id);
-            if (linkIndex !== -1) {
-                links[linkIndex].clicks++;
-                
-                fetch('https://ipapi.co/json/')
-                    .then(response => response.json())
-                    .then(data => {
-                        const visitorData = {
-                            timestamp: new Date().toISOString(),
-                            ip: data.ip || 'Unknown',
-                            country: data.country_name || 'Unknown',
-                            city: data.city || 'Unknown',
-                            userAgent: navigator.userAgent,
-                            fingerprint: getAdvancedFingerprint(),
-                            captchaToken: captchaToken
-                        };
-                        links[linkIndex].analytics.visitors.push(visitorData);
-                        
-                        const country = data.country_name || 'Unknown';
-                        links[linkIndex].analytics.countries[country] = (links[linkIndex].analytics.countries[country] || 0) + 1;
-                        
-                        saveData();
-                    })
-                    .catch(() => {
-                         links[linkIndex].analytics.visitors.push({
-                            timestamp: new Date().toISOString(),
-                            ip: 'Unknown', country: 'Unknown', userAgent: navigator.userAgent,
-                            fingerprint: getAdvancedFingerprint(), captchaToken: captchaToken
-                        });
-                        saveData();
-                    });
-            }
-            
-            document.getElementById('verification-content').innerHTML = `
-                <div style="color: var(--success); font-size: 3rem; margin: 30px;">✅</div>
-                <h3>🎉 Verification Complete!</h3>
-                <p>All security checks passed. Redirecting to destination...</p>
-                <div class="progress-bar" style="margin-top: 20px;">
-                    <div class="progress-fill" style="width: 100%; animation: shimmer 1s infinite;"></div>
-                </div>
-            `;
+             // Việc ghi nhận click và phân tích có thể được thực hiện ở đây nếu có backend.
+             // Với giải pháp client-side, việc này không đáng tin cậy.
+            document.getElementById('verification-content').innerHTML = `<div style="color: var(--success); font-size: 3rem; margin: 30px;">✅</div><h3>🎉 Verification Complete!</h3><p>All security checks passed. Redirecting to destination...</p><div class="progress-bar" style="margin-top: 20px;"><div class="progress-fill" style="width: 100%; animation: shimmer 1s infinite;"></div></div><p id="countdown" style="margin-top: 20px; font-size: 1.2rem; font-family: 'JetBrains Mono', monospace;"></p>`;
             
             let countdown = 3;
-            const countdownElement = document.createElement('p');
-            countdownElement.style.cssText = "margin-top: 20px; font-size: 1.2rem; font-family: 'JetBrains Mono', monospace;";
-            document.getElementById('verification-content').appendChild(countdownElement);
-            
-            const countdownInterval = setInterval(() => {
-                countdownElement.textContent = `Redirecting in ${countdown}s...`;
-                countdown--;
-                
-                if (countdown < 0) {
-                    clearInterval(countdownInterval);
+            const countdownEl = document.getElementById('countdown');
+            const interval = setInterval(() => {
+                countdownEl.textContent = `Redirecting in ${countdown}s...`;
+                if (--countdown < 0) {
+                    clearInterval(interval);
                     window.location.href = currentVerification.originalUrl;
                 }
             }, 1000);
         }
 
-        // Kiểm tra URL parameters khi tải trang
+        // --- SỬA ĐỔI QUAN TRỌNG ---
         window.addEventListener('load', function() {
             createParticles();
             
-            const urlParams = new URLSearchParams(window.location.search);
-            const linkId = urlParams.get('verify');
+            const hash = window.location.hash.substring(1);
             
-            if (linkId) {
-                const link = links.find(l => l.id === linkId);
-                if (link) {
-                    currentVerification = link;
-                    if (link.password && link.password.length > 0) {
-                        document.getElementById('main-page').style.display = 'none';
-                        document.getElementById('password-page').style.display = 'block';
+            if (hash) {
+                try {
+                    const decodedData = decodeURIComponent(escape(atob(hash)));
+                    const linkData = JSON.parse(decodedData);
+                    
+                    if (linkData.originalUrl && linkData.features) {
+                        currentVerification = linkData;
+                        if (linkData.password && linkData.password.length > 0) {
+                            document.getElementById('main-page').style.display = 'none';
+                            document.getElementById('password-page').style.display = 'block';
+                        } else {
+                            startVerification();
+                        }
                     } else {
-                        startVerification();
+                        throw new Error("Invalid link data");
                     }
-                } else {
-                    alert('❌ Link not found or has been deleted!');
+                } catch (e) {
+                    console.error("Failed to parse link data:", e);
+                    alert('❌ Link is invalid or corrupted!');
                     window.location.href = window.location.origin + window.location.pathname;
                 }
             } else {
@@ -1364,7 +1185,6 @@
             }
         });
         
-        // Xử lý form nhập mật khẩu
         document.getElementById('password-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const passwordInput = document.getElementById('access-password');
@@ -1374,22 +1194,7 @@
             } else {
                 showResult('password-result', 'Incorrect password!', true);
                 passwordInput.style.animation = 'shake 0.5s';
-                setTimeout(() => {
-                    passwordInput.style.animation = '';
-                }, 500);
-            }
-        });
-
-        // Thêm hiệu ứng hover cho các elements
-        document.addEventListener('mouseover', function(e) {
-            if (e.target.classList.contains('btn') || e.target.classList.contains('btn-small')) {
-                e.target.style.transform = 'translateY(-2px)';
-            }
-        });
-
-        document.addEventListener('mouseout', function(e) {
-            if (e.target.classList.contains('btn') || e.target.classList.contains('btn-small')) {
-                e.target.style.transform = 'translateY(0)';
+                setTimeout(() => { passwordInput.style.animation = ''; }, 500);
             }
         });
     </script>
